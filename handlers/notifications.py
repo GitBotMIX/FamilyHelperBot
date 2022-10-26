@@ -38,7 +38,7 @@ class Scheduler:
                     print('break')
                     break
                 shopping_list = ', '.join(product_list)
-                try:#Проблема: Если узер ид есть в нескольких семьях то присылает сообщение несколько раз
+                try:
                     await bot.send_message(user_id[0], f'Список покупок: \n'
                                                        f'{shopping_list}.\n\n'
                                                        f'Более подробный список - */Посмотреть записи*',

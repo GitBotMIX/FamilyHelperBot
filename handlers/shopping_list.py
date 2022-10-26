@@ -79,6 +79,10 @@ class ShoppingList:
             await Database().ShoppingList().sql_delete(callback_query)
             await callback_query.answer(text=f'Запись "{callback_query.data}" успешно удалена')
             await callback_query.message.delete()
+            for userid in await Database().Notifications().get_all_user_id_in_family_message(callback_query):
+                if str(callback_query.from_user.id) != str(userid[0]):
+                    await bot.send_message(userid[0], f'Запись "{callback_query.data}" удалена '
+                                                      f'пользователем {callback_query.from_user.first_name}')
 
 
 
@@ -102,6 +106,10 @@ class ShoppingList:
 
             await Database().ShoppingList().sql_delete_all(message)
             await message.answer('Все записи о покупках удалены')
+            for userid in await Database().Notifications().get_all_user_id_in_family_message(message):
+                if str(message.from_user.id) != str(userid[0]):
+                    await bot.send_message(userid[0], f'Пользователь "{message.from_user.first_name}" '
+                                                      f'удалил все записи о покупках')
 
     class Edit:
         async def edit(self, message: types.Message):
