@@ -120,18 +120,18 @@ class ShoppingList:
 
 def register_handlers_client(dp: Dispatcher):
     # ADD
-    dp.register_message_handler(ShoppingList().Add().add_item, text_contains=['Добавить запись➕'])
+    dp.register_message_handler(ShoppingList().Add().add_item, text_contains=['Добавить запись'])
     dp.register_message_handler(ShoppingList().Add().add_amount, state=ShoppingList().Add().AddNoteStates.ADD_AMOUNT)
     dp.register_message_handler(ShoppingList().Add().add_total, state=ShoppingList().Add().AddNoteStates.ADD_TOTAL)
     # /ADD
 
     # READ
-    dp.register_message_handler(ShoppingList().Read().read, text_contains=['Посмотреть записи👀'])
+    dp.register_message_handler(ShoppingList().Read().read, text_contains=['Посмотреть записи'])
     # /READ
 
     # DELETE
-    dp.register_message_handler(ShoppingList().Delete().delete_select, text_contains=['Удалить запись➖'])
-    dp.register_message_handler(ShoppingList().Delete().delete_all, text_contains=['Удалить все записи✖'])
+    dp.register_message_handler(ShoppingList().Delete().delete_select, text_contains=['Удалить запись'])
+    dp.register_message_handler(ShoppingList().Delete().delete_all, text_contains=['Удалить все записи'])
     dp.register_message_handler(ShoppingList().Delete().delete_execute, state=ShoppingList().Delete().DeleteStates.
                                 ITEM_DELETE)
     #dp.callback_query_handler(ShoppingList().Delete().delete_calback_execute, func=lambda c: c.data == 'delete')
