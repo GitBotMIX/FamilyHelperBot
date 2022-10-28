@@ -14,7 +14,7 @@ import asyncio
 
 class Scheduler:
     async def make_task(self):
-        aioschedule.every().day.at("9:00").do(self.display_notification)
+        aioschedule.every().day.at("6:00").do(self.display_notification)
         #aioschedule.every(5).seconds.do(self.display_notification)
         while True:
             await aioschedule.run_pending()
