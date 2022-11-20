@@ -1,3 +1,5 @@
+from typing import Tuple, List, Any
+
 from aiogram import types, Dispatcher
 from create_bot import dp, bot
 from keyboards.authorization_kb import kb_authorization
@@ -6,12 +8,70 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from data_base.sqlite_db import Database
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import re
 
 
 class ShoppingList:
     class Add:
+        @staticmethod
+        async def send_notification_all_family_users(message, add_note_value, user_id):
+            for userid in await Database().Notifications().get_all_user_id_in_family_message(message):
+                if str(user_id) != str(userid[0]):
+                    await bot.send_message(userid[0], f'Добавлена запись "{add_note_value}" '
+                                                      f'пользователем {message.from_user.first_name}')
+        @staticmethod
+        async def str_handler_for_shopping_list(message):
+            message_text = message.text
+
+            async def share_item_and_quantity(list_el: str) -> tuple[Any, Any]:
+                numbers_in_str = re.findall('(\d+)', list_el)
+                if numbers_in_str:
+                    shopping_numbers_index = list_el.index(numbers_in_str[0])
+                    shopping_numbers = list_el[shopping_numbers_index:]
+                    shopping_words = list_el.replace(numbers_in_str[0], '')[:shopping_numbers_index]
+                    shopping_words = shopping_words.lstrip().title()
+                    return shopping_words, shopping_numbers
+                else:
+                    shopping_numbers = '1'
+                    shopping_words = list_el.lstrip().title()
+                    return shopping_words, shopping_numbers
+
+            if ',' in message_text:
+                shopping_list = message_text.split(',')
+                shopping_numbers_list = []
+                shopping_words_list = []
+                for shopping_list_el in shopping_list:
+                    words, numbers = await share_item_and_quantity(shopping_list_el)
+                    shopping_words_list.append(words)
+                    shopping_numbers_list.append(numbers)
+                return shopping_words_list, shopping_numbers_list
+            else:
+                words, numbers = await share_item_and_quantity(message_text)
+                return words, numbers
+
+        @staticmethod
+        async def fast_add(message: types.Message):
+            user_id = message.from_user.id
+            family_name = await Database().sql_get_family_name(message)
+            shopping_words, shopping_numbers = await ShoppingList.Add.str_handler_for_shopping_list(message)
+            if isinstance(shopping_words, list):
+                for shopping_total_amount in range(len(shopping_words)):
+                    await Database().ShoppingList().sql_add(
+                        shopping_words[shopping_total_amount],
+                        shopping_numbers[shopping_total_amount],
+                        family_name,
+                        user_id)
+
+                await message.answer(f'Записи "{", ".join(shopping_words)}" успешно добавлены!')
+
+
+            else:
+                await message.answer(f'"{shopping_words}" успешно добавлено!')
+                await Database().ShoppingList().sql_add(shopping_words, shopping_numbers, family_name, user_id)
+                await ShoppingList.Add.send_notification_all_family_users(message, shopping_words, user_id)
+
         async def add_item(self, message: types.Message):
-            if await Database().sql_check_user_id(message.from_user.id) == False:
+            if not await Database().sql_check_user_id(message.from_user.id):
                 await message.answer('Необходимо зарегистрироваться!❌', reply_markup=kb_authorization)
                 return
             await message.answer('Что нужно купить:')
@@ -25,16 +85,13 @@ class ShoppingList:
             await ShoppingList().Add().AddNoteStates.next()
 
         async def add_total(self, message: types.Message, state: FSMContext):
+            user_id = message.from_user.id
             async with state.proxy() as data:
                 data['amount'] = message.text
                 await message.answer(f'"{data["item"]}" успешно добавлено!')
-            await Database().ShoppingList().sql_add(state, message)
+            await Database().ShoppingList().sql_add_state(state, message)
             async with state.proxy() as data:
-                for userid in await Database().Notifications().get_all_user_id_in_family_message(message):
-
-                    if str(message.from_user.id) != str(userid[0]):
-                        await bot.send_message(userid[0], f'Добавлена запись "{data["item"]}" '
-                                                     f'пользователем {message.from_user.first_name}')
+                await ShoppingList.Add.send_notification_all_family_users(message, data["item"], user_id)
             await state.finish()
 
         class AddNoteStates(StatesGroup):
@@ -73,7 +130,8 @@ class ShoppingList:
         @dp.callback_query_handler(lambda x: x.data and x.data.startswith('del '))
         async def delete_callback_execute(callback_query: types.CallbackQuery):
             if await Database().sql_check_user_id(callback_query.from_user.id) == False:
-                await bot.send_message(callback_query.from_user.id, 'Необходимо зарегистрироваться!❌', reply_markup=kb_authorization)
+                await bot.send_message(callback_query.from_user.id, 'Необходимо зарегистрироваться!❌',
+                                       reply_markup=kb_authorization)
                 return
             callback_query.data = callback_query.data.replace('del ', '')
             await Database().ShoppingList().sql_delete(callback_query)
@@ -83,8 +141,6 @@ class ShoppingList:
                 if str(callback_query.from_user.id) != str(userid[0]):
                     await bot.send_message(userid[0], f'Запись "{callback_query.data}" удалена '
                                                       f'пользователем {callback_query.from_user.first_name}')
-
-
 
         async def delete_select(self, message: types.Message, state: FSMContext):
             if await ShoppingList().Read().read(message, delete=True) == False:
@@ -98,10 +154,10 @@ class ShoppingList:
             else:
                 await message.answer('Такой записи нет в таблице')
 
-
         async def delete_all(self, message: types.Message):
             if await Database().sql_check_user_id(message.from_user.id) == False:
-                await bot.send_message(message.from_user.id, 'Необходимо зарегистрироваться!❌', reply_markup=kb_authorization)
+                await bot.send_message(message.from_user.id, 'Необходимо зарегистрироваться!❌',
+                                       reply_markup=kb_authorization)
                 return
 
             await Database().ShoppingList().sql_delete_all(message)
@@ -114,8 +170,6 @@ class ShoppingList:
     class Edit:
         async def edit(self, message: types.Message):
             pass
-
-
 
 
 def register_handlers_client(dp: Dispatcher):
@@ -134,5 +188,6 @@ def register_handlers_client(dp: Dispatcher):
     dp.register_message_handler(ShoppingList().Delete().delete_all, text_contains=['Удалить все записи'])
     dp.register_message_handler(ShoppingList().Delete().delete_execute, state=ShoppingList().Delete().DeleteStates.
                                 ITEM_DELETE)
-    #dp.callback_query_handler(ShoppingList().Delete().delete_calback_execute, func=lambda c: c.data == 'delete')
+    dp.register_message_handler(ShoppingList.Add.fast_add)
+    # dp.callback_query_handler(ShoppingList().Delete().delete_calback_execute, func=lambda c: c.data == 'delete')
     # /DELETE

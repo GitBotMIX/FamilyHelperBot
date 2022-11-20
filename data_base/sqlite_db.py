@@ -19,8 +19,8 @@ class Database:
     async def get_cursor(self):
         return cur, base
 
+        # AUTHORIZATION
 
-            #AUTHORIZATION
     async def sql_get_family_name(self, message):
         try:
             user_id = str(message.from_user.id)
@@ -28,30 +28,30 @@ class Database:
         except:
             return await DatabaseAuthorization(cur, base).get_family_name(message[0])
 
-
     async def sql_registration(self, state, message):
         async with state.proxy() as data:
             tuple_data = tuple(data.values()) + (str(message.from_user.id),)
             await DatabaseAuthorization(cur, base).execute_registration(tuple_data)
-
 
     async def sql_sign_in(self, state, message):
         async with state.proxy() as data:
             tuple_data = tuple(data.values())
             if await DatabaseAuthorization(cur, base).sign_in_user_exist(tuple_data):
                 if await DatabaseAuthorization(cur, base).existance_check_user_id(str(message.from_user.id)) == False:
-                    await DatabaseAuthorization(cur, base).execute_registration(tuple_data + (str(message.from_user.id),))
+                    await DatabaseAuthorization(cur, base).execute_registration(
+                        tuple_data + (str(message.from_user.id),))
                     return True
                 else:
                     return True
             else:
                 return False
 
-
     async def sql_check_login(self, data):
         return await DatabaseAuthorization(cur, base).existence_check_login(data)
+
     async def sql_check_password(self, data):
         return await DatabaseAuthorization(cur, base).existence_check_password(data)
+
     async def sql_check_user_id(self, data):
         return await DatabaseAuthorization(cur, base).existance_check_user_id(data)
 
@@ -59,26 +59,35 @@ class Database:
         cur.execute(f'DELETE FROM authorization WHERE user_id == ?', (user_id,))
         cur.execute(f'DELETE FROM shopping WHERE user_id == ?', (user_id,))
         base.commit()
-            #/AUTHORIZATION
+        # /AUTHORIZATION
 
     class ShoppingList:
         async def check_value_exist(self, data):
             if data == None:
                 return False
             return True
+
         async def sql_item_check(self, message):
             family_name = await Database().sql_get_family_name(message)
             check = cur.execute(f'SELECT item FROM shopping WHERE item == ? AND family_name == ?',
-                                   (message.text, family_name,)).fetchone()
+                                (message.text, family_name,)).fetchone()
             return await self.check_value_exist(check)
 
-        async def sql_add(self, state, message):
+        async def sql_add_state(self, state, message):
             async with state.proxy() as data:
                 family_name = await Database().sql_get_family_name(message)
                 tuple_data = tuple(data.values()) + (str(family_name),) + (str(message.from_user.id),)
                 cur.execute(f'INSERT INTO shopping VALUES (?, ?, ?, ?)', tuple_data)
                 base.commit()
                 return True
+
+        async def sql_add(self, *values):
+            #tuple_data = tuple(data.values()) + (str(family_name),) + (str(message.from_user.id),)
+            print(values)
+            cur.execute(f'INSERT INTO shopping VALUES (?, ?, ?, ?)', values)
+            base.commit()
+            return True
+
         async def sql_read(self, message):
             family_name = await Database().sql_get_family_name(message)
             readList = []
@@ -92,6 +101,7 @@ class Database:
             if readList == []:
                 return False
             return readList, product_list, amount_list
+
         async def sql_delete(self, message):
             family_name = await Database().sql_get_family_name(message)
             try:
@@ -99,10 +109,12 @@ class Database:
             except AttributeError:
                 cur.execute(f'DELETE FROM shopping WHERE item == ? AND family_name == ?', (message.data, family_name,))
             base.commit()
+
         async def sql_delete_all(self, message):
             family_name = await Database().sql_get_family_name(message)
             cur.execute(f'DELETE FROM shopping WHERE family_name == ?', (family_name,))
             base.commit()
+
     class Notifications:
         async def get_all_family_name(self):
             return cur.execute(f'SELECT family_name FROM authorization').fetchall()
@@ -110,9 +122,10 @@ class Database:
         async def get_all_user_id_in_family_message(self, message):
             family_name = await Database().sql_get_family_name(message)
             all_user_id = cur.execute(f'SELECT user_id FROM authorization WHERE family_name == ?',
-                                (str(family_name),)).fetchall()
+                                      (str(family_name),)).fetchall()
             return all_user_id
+
         async def get_all_user_id_in_family_name(self, family_name):
             all_user_id = cur.execute(f'SELECT user_id FROM authorization WHERE family_name == ?',
-                                (str(family_name),)).fetchall()
+                                      (str(family_name),)).fetchall()
             return all_user_id
