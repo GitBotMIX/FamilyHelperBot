@@ -23,6 +23,13 @@ class ShoppingList:
                     await bot.send_message(userid[0], f'{message_text}')
             else:
                 await message.answer("У тебя нет прав для использования этой функции")
+
+        @staticmethod
+        async def send_notification_all_family_users_list(message, add_note_value, user_id):
+            for userid in await Database().Notifications().get_all_user_id_in_family_message(message):
+                if str(user_id) != str(userid[0]):
+                    await bot.send_message(userid[0], f'Записи "{", ".join(add_note_value)}" добавлены пользователем '
+                                                      f'"{message.from_user.first_name}"!')
         @staticmethod
         async def send_notification_all_family_users(message, add_note_value, user_id):
             for userid in await Database().Notifications().get_all_user_id_in_family_message(message):
@@ -73,7 +80,7 @@ class ShoppingList:
                         user_id)
 
                 await message.answer(f'Записи "{", ".join(shopping_words)}" успешно добавлены!')
-
+                await ShoppingList.Add.send_notification_all_family_users_list(message, shopping_words, user_id)
 
             else:
                 await message.answer(f'"{shopping_words}" успешно добавлено!')
