@@ -9,10 +9,20 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from data_base.sqlite_db import Database
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import re
+from constants import MODERATORS_ID
 
 
 class ShoppingList:
     class Add:
+        @staticmethod
+        async def send_message_for_all_user(message: types.Message):
+            user_id = str(message.from_user.id)
+            message_text = message.text.replace('/Обновление ', '')
+            if user_id in MODERATORS_ID:
+                for userid in await Database().Notifications().get_all_user_id_in_family_message(message):
+                    await bot.send_message(userid[0], f'{message_text}')
+            else:
+                await message.answer("У тебя нет прав для использования этой функции")
         @staticmethod
         async def send_notification_all_family_users(message, add_note_value, user_id):
             for userid in await Database().Notifications().get_all_user_id_in_family_message(message):
@@ -175,6 +185,7 @@ class ShoppingList:
 def register_handlers_client(dp: Dispatcher):
     # ADD
     dp.register_message_handler(ShoppingList().Add().add_item, text_contains=['Добавить запись'])
+    dp.register_message_handler(ShoppingList().Add().send_message_for_all_user, text_contains=['Обновление'])
     dp.register_message_handler(ShoppingList().Add().add_amount, state=ShoppingList().Add().AddNoteStates.ADD_AMOUNT)
     dp.register_message_handler(ShoppingList().Add().add_total, state=ShoppingList().Add().AddNoteStates.ADD_TOTAL)
     # /ADD
