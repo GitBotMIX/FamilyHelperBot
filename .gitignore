@@ -1,6 +1,10 @@
 *.pyc
 *~
 __pycache__
+/__pycache__
 myvenv
-db.sqlite3
+/log
+/tmp
+/db/*.sqlite3
 .DS_Store
+/Notifications.db
