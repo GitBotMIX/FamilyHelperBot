@@ -118,6 +118,8 @@ async def sign_out_finish(message: types.Message, state: FSMContext):
 
 
 
+async def get_shopping_kb(message: types.Message):
+    await message.answer('Главное меню', reply_markup=kb_shopping)
 async def start(message: types.Message):
     await message.answer('Добро пожаловать в бота FamilyHelper.\n\n'
                          'Здесь можно всей семьей:\n'
@@ -150,3 +152,4 @@ def register_handlers_client(dp: Dispatcher):
     dp.register_message_handler(sign_out_finish, state=SignUpStates.SIGN_UP_FINISH)
 
     dp.register_message_handler(start, commands=['start'])
+    dp.register_message_handler(get_shopping_kb, commands=['menu'])

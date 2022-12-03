@@ -73,18 +73,32 @@ class ShoppingList:
             shopping_words, shopping_numbers = await ShoppingList.Add.str_handler_for_shopping_list(message)
             if isinstance(shopping_words, list):
                 for shopping_total_amount in range(len(shopping_words)):
-                    await Database().ShoppingList().sql_add(
-                        shopping_words[shopping_total_amount],
-                        shopping_numbers[shopping_total_amount],
-                        family_name,
-                        user_id)
+                    item = shopping_words[shopping_total_amount].lower().title().rstrip()
+                    exist_item = await Database().ShoppingList().sql_item_check(item, family_name=family_name)
+                    if exist_item:
+                        await Database.ShoppingList.update_amount(item,
+                                                                  shopping_numbers[shopping_total_amount], message,
+                                                                  family_name=family_name)
+                    else:
+                        await Database().ShoppingList().sql_add(
+                            item,
+                            shopping_numbers[shopping_total_amount],
+                            family_name,
+                            user_id)
 
                 await message.answer(f'Записи "{", ".join(shopping_words)}" успешно добавлены!')
                 await ShoppingList.Add.send_notification_all_family_users_list(message, shopping_words, user_id)
 
             else:
                 await message.answer(f'"{shopping_words}" успешно добавлено!')
-                await Database().ShoppingList().sql_add(shopping_words, shopping_numbers, family_name, user_id)
+                item = shopping_words.lower().title().rstrip()
+                exist_item = await Database().ShoppingList().sql_item_check(item,
+                                                                            family_name=family_name)
+                if exist_item:
+                    await Database.ShoppingList.update_amount(item, shopping_numbers, message,
+                                                              family_name=family_name)
+                else:
+                    await Database().ShoppingList().sql_add(item, shopping_numbers, family_name, user_id)
                 await ShoppingList.Add.send_notification_all_family_users(message, shopping_words, user_id)
 
         async def add_item(self, message: types.Message):
@@ -98,7 +112,7 @@ class ShoppingList:
         async def add_amount(self, message: types.Message, state: FSMContext):
             await message.answer('Количество:')
             async with state.proxy() as data:
-                data['item'] = message.text
+                data['item'] = message.text.lower().title()
             await ShoppingList().Add().AddNoteStates.next()
 
         async def add_total(self, message: types.Message, state: FSMContext):
@@ -106,7 +120,13 @@ class ShoppingList:
             async with state.proxy() as data:
                 data['amount'] = message.text
                 await message.answer(f'"{data["item"]}" успешно добавлено!')
-            await Database().ShoppingList().sql_add_state(state, message)
+                list_data = data
+            message.text = list_data['item']
+            exist_item = await Database().ShoppingList().sql_item_check(message)
+            if exist_item:
+                await Database.ShoppingList.update_amount(list_data['item'], list_data['amount'], message)
+            else:
+                await Database().ShoppingList().sql_add_state(state, message)
             async with state.proxy() as data:
                 await ShoppingList.Add.send_notification_all_family_users(message, data["item"], user_id)
             await state.finish()

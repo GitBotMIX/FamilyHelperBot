@@ -20,6 +20,11 @@ class Database:
         return cur, base
 
         # AUTHORIZATION
+    @staticmethod
+    async def get_all_user_id():
+        all_user_id = cur.execute('SELECT user_id FROM authorization').fetchall()
+        return all_user_id
+
 
     async def sql_get_family_name(self, message):
         try:
@@ -67,11 +72,16 @@ class Database:
                 return False
             return True
 
-        async def sql_item_check(self, message):
-            family_name = await Database().sql_get_family_name(message)
+        async def sql_item_check(self, message, family_name=None):
+            try:
+                item = message.text
+            except AttributeError:
+                item = message
+            if not family_name:
+                family_name = await Database().sql_get_family_name(message)
             check = cur.execute(f'SELECT item FROM shopping WHERE item == ? AND family_name == ?',
-                                (message.text, family_name,)).fetchone()
-            return await self.check_value_exist(check)
+                                (item, family_name,)).fetchone()
+            return check
 
         async def sql_add_state(self, state, message):
             async with state.proxy() as data:
@@ -83,7 +93,6 @@ class Database:
 
         async def sql_add(self, *values):
             #tuple_data = tuple(data.values()) + (str(family_name),) + (str(message.from_user.id),)
-            print(values)
             cur.execute(f'INSERT INTO shopping VALUES (?, ?, ?, ?)', values)
             base.commit()
             return True
@@ -115,6 +124,12 @@ class Database:
             cur.execute(f'DELETE FROM shopping WHERE family_name == ?', (family_name,))
             base.commit()
 
+        @staticmethod
+        async def update_amount(item, amount, message, family_name=None):
+            if not family_name:
+                family_name = await Database().sql_get_family_name(message)
+            cur.execute(f'UPDATE shopping SET amount == ? WHERE family_name == ? AND item == ?', (amount, family_name, item))
+            base.commit()
     class Notifications:
         async def get_all_family_name(self):
             return cur.execute(f'SELECT family_name FROM authorization').fetchall()

@@ -7,4 +7,6 @@ myvenv
 /tmp
 /db/*.sqlite3
 .DS_Store
-/Notifications.db
+/FamilyDatabase.db
+/venv/
+/env/
