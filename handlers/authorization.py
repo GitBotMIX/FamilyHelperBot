@@ -148,7 +148,8 @@ def register_handlers_client(dp: Dispatcher):
     dp.register_message_handler(Registration.family_password, state=RegistrationStates.FAMILY_PASSWORD)
     dp.register_message_handler(Registration.finish, state=RegistrationStates.FAMILY_FINISH)
 
-    dp.register_message_handler(sign_out, commands=['Выйти', 'signout'])
+    dp.register_message_handler(sign_out,
+                                lambda msg: any(i in msg.text.lower() for i in ['выйти из аккаунта', 'signout']))
     dp.register_message_handler(sign_out_finish, state=SignUpStates.SIGN_UP_FINISH)
 
     dp.register_message_handler(start, commands=['start'])
